@@ -35,6 +35,18 @@ The server keeps Angel One's WebSocket feeds open while it runs:
 
 Ticks only flow during market hours (NSE 09:15–15:30 IST).
 
+## Placing orders from the terminal
+
+`scripts/order.ts` places a real order yourself, without going through Claude. It looks up the token and last price, shows the order, and sends it only after you type `YES`:
+
+```sh
+bun scripts/order.ts BUY SBIN-EQ 1 --product INTRADAY
+bun scripts/order.ts SELL RELIANCE-EQ 5 --product DELIVERY --type LIMIT --price 1250
+bun scripts/order.ts BUY SBIN-EQ 1 --product INTRADAY --dry-run   # show the request, send nothing
+```
+
+Run it with no arguments for all options. It doesn't depend on `ANGEL_ENABLE_TRADING`.
+
 ## Trading
 
 Order tools (`place_order`, `modify_order`, `cancel_order`, `convert_position`, GTT create/modify/cancel) are only registered when `ANGEL_ENABLE_TRADING=true`. They act on your real account.
