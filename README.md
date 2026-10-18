@@ -24,6 +24,17 @@ A stdio MCP server exposing Angel One SmartAPI (account, portfolio, orders, mark
 
 The server reads `.env` from this directory, logs in lazily with an auto-generated TOTP, and re-logs in when the session expires.
 
+## Live streaming
+
+The server keeps Angel One's WebSocket feeds open while it runs:
+
+- `start_watch` — stream up to 1000 instruments (get tokens from `search_scrip`) and accumulate per-symbol stats.
+- `get_watch_summary` — % change over the window and day, price vs VWAP, window volume, buy/sell ratio, uptick ratio. `wait_seconds: 300` returns after a 5-minute window.
+- `stop_watch`, `list_watches` — manage watches (max 5; unread watches stop after 30 minutes).
+- `get_order_updates` — your own order status changes as they happen.
+
+Ticks only flow during market hours (NSE 09:15–15:30 IST).
+
 ## Trading
 
 Order tools (`place_order`, `modify_order`, `cancel_order`, `convert_position`, GTT create/modify/cancel) are only registered when `ANGEL_ENABLE_TRADING=true`. They act on your real account.

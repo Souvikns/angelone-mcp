@@ -1,3 +1,4 @@
+import type { FeedSession } from "./feed/connection.ts";
 import { totp } from "./totp.ts";
 
 const ROOT = "https://apiconnect.angelone.in";
@@ -30,6 +31,7 @@ export class SmartApiError extends Error {
 
 export class SmartApi {
   private jwt: string | null = null;
+  private feedToken: string | null = null;
   private loginPromise: Promise<void> | null = null;
 
   constructor(private readonly opts: SmartApiOptions) {}
@@ -79,17 +81,35 @@ export class SmartApi {
   private login(): Promise<void> {
     this.loginPromise ??= (async () => {
       this.jwt = null;
-      const r = await this.raw<{ jwtToken: string }>("POST", "/rest/auth/angelbroking/user/v1/loginByPassword", {
+      const r = await this.raw<{ jwtToken: string; feedToken: string }>("POST", "/rest/auth/angelbroking/user/v1/loginByPassword", {
         clientcode: this.opts.clientCode,
         password: this.opts.pin,
         totp: totp(this.opts.totpSecret),
       });
       if (!r.status || !r.data?.jwtToken) throw new SmartApiError(`Login failed: ${r.message}`, r.errorcode);
       this.jwt = r.data.jwtToken;
+      this.feedToken = r.data.feedToken;
     })().finally(() => {
       this.loginPromise = null;
     });
     return this.loginPromise;
+  }
+
+  /** Credentials for the WebSocket feeds; logs in if needed. */
+  async session(): Promise<FeedSession> {
+    if (!this.jwt) await this.login();
+    return this.currentSession();
+  }
+
+  /** Forces a fresh login (new JWT and feed token). */
+  async relogin(): Promise<FeedSession> {
+    await this.login();
+    return this.currentSession();
+  }
+
+  private currentSession(): FeedSession {
+    if (!this.jwt || !this.feedToken) throw new SmartApiError("Login did not return a JWT and feed token");
+    return { jwt: this.jwt, feedToken: this.feedToken, apiKey: this.opts.apiKey, clientCode: this.opts.clientCode };
   }
 
   /** Authenticated call; logs in lazily and re-logs in once if the session expired. */

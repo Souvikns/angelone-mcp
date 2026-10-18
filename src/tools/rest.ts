@@ -1,10 +1,10 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import type { SmartApi } from "./smartapi.ts";
+import type { SmartApi } from "../smartapi.ts";
+import { exchange, READ, wrap, WRITE } from "./common.ts";
 
 const P = "/rest/secure/angelbroking";
 
-const exchange = z.enum(["NSE", "BSE", "NFO", "BFO", "MCX", "CDS", "NCDEX"]);
 const transactionType = z.enum(["BUY", "SELL"]);
 const productType = z.enum(["DELIVERY", "CARRYFORWARD", "MARGIN", "INTRADAY", "BO"]);
 const orderType = z.enum(["MARKET", "LIMIT", "STOPLOSS_LIMIT", "STOPLOSS_MARKET"]);
@@ -25,31 +25,10 @@ const dateTime = z
   .describe("IST timestamp, format 'yyyy-MM-dd HH:mm'");
 const expiryType = z.enum(["NEAR", "NEXT", "FAR"]);
 
-const READ = { readOnlyHint: true, openWorldHint: true } as const;
-const WRITE = { readOnlyHint: false, destructiveHint: true, openWorldHint: true } as const;
-
-function ok(data: unknown) {
-  return { content: [{ type: "text" as const, text: JSON.stringify(data ?? null, null, 2) }] };
-}
-
-function fail(e: unknown) {
-  return { isError: true, content: [{ type: "text" as const, text: e instanceof Error ? e.message : String(e) }] };
-}
-
-const wrap =
-  <A>(fn: (args: A) => Promise<unknown>) =>
-  async (args: A) => {
-    try {
-      return ok(await fn(args));
-    } catch (e) {
-      return fail(e);
-    }
-  };
-
 // SmartAPI expects numeric order fields as strings.
 const str = (v: number | undefined) => (v === undefined ? undefined : String(v));
 
-export function registerTools(server: McpServer, api: SmartApi, enableTrading: boolean) {
+export function registerRestTools(server: McpServer, api: SmartApi, enableTrading: boolean) {
   // ---------- Account ----------
   server.registerTool(
     "get_profile",
