@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 export const exchange = z.enum(["NSE", "BSE", "NFO", "BFO", "MCX", "CDS", "NCDEX"]);
+export const transactionType = z.enum(["BUY", "SELL"]);
+export const productType = z.enum(["DELIVERY", "CARRYFORWARD", "MARGIN", "INTRADAY", "BO"]);
+export const orderType = z.enum(["MARKET", "LIMIT", "STOPLOSS_LIMIT", "STOPLOSS_MARKET"]);
+export const variety = z.enum(["NORMAL", "STOPLOSS", "AMO", "ROBO"]);
 
 export const READ = { readOnlyHint: true, openWorldHint: true } as const;
 export const WRITE = { readOnlyHint: false, destructiveHint: true, openWorldHint: true } as const;

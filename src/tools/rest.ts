@@ -1,14 +1,9 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { SmartApi } from "../smartapi.ts";
-import { exchange, READ, wrap, WRITE } from "./common.ts";
+import { exchange, orderType, productType, READ, transactionType, variety, wrap, WRITE } from "./common.ts";
 
 const P = "/rest/secure/angelbroking";
-
-const transactionType = z.enum(["BUY", "SELL"]);
-const productType = z.enum(["DELIVERY", "CARRYFORWARD", "MARGIN", "INTRADAY", "BO"]);
-const orderType = z.enum(["MARKET", "LIMIT", "STOPLOSS_LIMIT", "STOPLOSS_MARKET"]);
-const variety = z.enum(["NORMAL", "STOPLOSS", "AMO", "ROBO"]);
 const interval = z.enum([
   "ONE_MINUTE",
   "THREE_MINUTE",
