@@ -158,5 +158,7 @@ The MCP server process keeps no code path that calls a write endpoint.
 
 ## Docs
 
-README "Trading" section rewritten for the request flow; `.env.example` gains
+`docs/removed-write-tools.md` documents each removed tool (params, endpoint) and its
+`request_*` replacement. README "Trading" section rewritten for the request flow and
+links to it; `.env.example` gains
 `ANGEL_REQUESTS_DIR` and the `ANGEL_ENABLE_TRADING` comment is updated.
