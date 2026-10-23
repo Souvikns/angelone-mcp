@@ -1,9 +1,13 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { join } from "node:path";
 import { config } from "./src/config.ts";
 import { MarketFeed } from "./src/feed/market.ts";
 import { OrderFeed } from "./src/feed/orders.ts";
+import { RequestService, spawnApprover } from "./src/requests/service.ts";
+import { RequestStore } from "./src/requests/store.ts";
 import { SmartApi } from "./src/smartapi.ts";
+import { registerRequestTools } from "./src/tools/requests.ts";
 import { registerRestTools } from "./src/tools/rest.ts";
 import { quoteBaseline, registerStreamTools } from "./src/tools/stream.ts";
 import { WatchManager } from "./src/watch.ts";
@@ -18,7 +22,13 @@ const orders = new OrderFeed(feedOptions);
 const watches = new WatchManager({ feed: market, fetchBaseline: quoteBaseline(api) });
 
 const server = new McpServer({ name: "angelone", version: "0.2.0" });
-registerRestTools(server, api, config.enableTrading);
+registerRestTools(server, api);
+if (config.enableTrading) {
+  // Claude only files requests; scripts/approver.ts asks you and makes the call.
+  const store = new RequestStore(config.requestsDir);
+  const launch = spawnApprover(join(import.meta.dir, "scripts", "approver.ts"), store);
+  registerRequestTools(server, new RequestService({ store, launch }));
+}
 registerStreamTools(server, { watches, orders });
 
 let shuttingDown = false;
@@ -35,4 +45,4 @@ process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
 await server.connect(new StdioServerTransport());
-log(`MCP server ready (trading ${config.enableTrading ? "ENABLED" : "disabled"})`);
+log(`MCP server ready (order requests ${config.enableTrading ? "ENABLED" : "disabled"})`);

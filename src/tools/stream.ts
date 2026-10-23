@@ -1,40 +1,12 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { ServerNotification } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import type { OrderFeed } from "../feed/orders.ts";
 import { Mode, type Exchange } from "../feed/protocol.ts";
 import type { SmartApi } from "../smartapi.ts";
 import type { BaselineFetcher, BaselineQuote, WatchManager } from "../watch.ts";
-import { exchange, READ, run, wrap } from "./common.ts";
+import { exchange, READ, run, withProgress, wrap } from "./common.ts";
 
-const PROGRESS_EVERY_MS = 15_000;
 const QUOTE_BATCH = 50;
-
-interface ProgressExtra {
-  _meta?: { progressToken?: string | number };
-  sendNotification: (n: ServerNotification) => Promise<void>;
-}
-
-/** Awaits `work`, sending MCP progress notifications so clients don't time out. */
-async function withProgress<T>(work: Promise<T>, totalMs: number, extra: ProgressExtra, message: string): Promise<T> {
-  const progressToken = extra._meta?.progressToken;
-  if (progressToken === undefined) return work;
-  const started = Date.now();
-  const timer = setInterval(() => {
-    const progress = Math.round(Math.min(totalMs, Date.now() - started) / 1000);
-    extra
-      .sendNotification({
-        method: "notifications/progress",
-        params: { progressToken, progress, total: Math.round(totalMs / 1000), message },
-      })
-      .catch(() => {});
-  }, PROGRESS_EVERY_MS);
-  try {
-    return await work;
-  } finally {
-    clearInterval(timer);
-  }
-}
 
 interface QuoteRow {
   exchange: Exchange;

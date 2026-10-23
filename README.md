@@ -49,7 +49,16 @@ Run it with no arguments for all options. It doesn't depend on `ANGEL_ENABLE_TRA
 
 ## Trading
 
-Order tools (`place_order`, `modify_order`, `cancel_order`, `convert_position`, GTT create/modify/cancel) are only registered when `ANGEL_ENABLE_TRADING=true`. They act on your real account.
+With `ANGEL_ENABLE_TRADING=true`, Claude gets `request_place_order`, `request_modify_order`, `request_cancel_order`, `request_convert_position`, `request_create_gtt_rule`, `request_modify_gtt_rule` and `request_cancel_gtt_rule`. Claude can't change your account directly:
+
+1. The tool writes `requests/<id>.json` with the parameters and Claude's reason, and starts `scripts/approver.ts`.
+2. The approver shows a Yes/No dialog (a PowerShell popup on Windows, `osascript` on macOS) with the order, the last price and the reason. The default button is No/Reject.
+3. Only Yes/Approve sends it to Angel One. Unanswered requests expire after 2 minutes.
+4. The outcome is written to `requests/<id>.result.json` and returned to Claude. `get_request` and `list_requests` read it later; the approver's output is in `requests/<id>.log`.
+
+To re-run the dialog for a pending request yourself: `bun scripts/approver.ts <id>`.
+
+The direct tools these replace are documented in [docs/removed-write-tools.md](docs/removed-write-tools.md).
 
 ## Tests
 

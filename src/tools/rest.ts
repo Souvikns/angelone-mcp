@@ -1,9 +1,10 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { SmartApi } from "../smartapi.ts";
-import { exchange, orderType, productType, READ, transactionType, variety, wrap, WRITE } from "./common.ts";
+import { exchange, productType, READ, transactionType, wrap } from "./common.ts";
 
 const P = "/rest/secure/angelbroking";
+
 const interval = z.enum([
   "ONE_MINUTE",
   "THREE_MINUTE",
@@ -20,10 +21,7 @@ const dateTime = z
   .describe("IST timestamp, format 'yyyy-MM-dd HH:mm'");
 const expiryType = z.enum(["NEAR", "NEXT", "FAR"]);
 
-// SmartAPI expects numeric order fields as strings.
-const str = (v: number | undefined) => (v === undefined ? undefined : String(v));
-
-export function registerRestTools(server: McpServer, api: SmartApi, enableTrading: boolean) {
+export function registerRestTools(server: McpServer, api: SmartApi) {
   // ---------- Account ----------
   server.registerTool(
     "get_profile",
@@ -72,7 +70,7 @@ export function registerRestTools(server: McpServer, api: SmartApi, enableTradin
   server.registerTool(
     "get_order_details",
     {
-      description: "Get the status of a single order by its uniqueorderid (from the order book or place_order).",
+      description: "Get the status of a single order by its uniqueorderid (from the order book or request_place_order).",
       inputSchema: { uniqueorderid: z.string() },
       annotations: READ,
     },
@@ -239,151 +237,5 @@ export function registerRestTools(server: McpServer, api: SmartApi, enableTradin
     "get_gtt_rule",
     { description: "Get details of one GTT rule.", inputSchema: { id: z.string() }, annotations: READ },
     wrap((args) => api.post(`${P}/gtt/v1/ruleDetails`, args)),
-  );
-
-  if (!enableTrading) return;
-
-  // ---------- Trading (only with ANGEL_ENABLE_TRADING=true) ----------
-  server.registerTool(
-    "place_order",
-    {
-      description:
-        "PLACES A REAL ORDER with real money. Always confirm the exact order with the user first. Use search_scrip for tradingsymbol/symboltoken.",
-      inputSchema: {
-        variety: variety.default("NORMAL"),
-        tradingsymbol: z.string(),
-        symboltoken: z.string(),
-        exchange,
-        transactiontype: transactionType,
-        ordertype: orderType,
-        producttype: productType,
-        duration: z.enum(["DAY", "IOC"]).default("DAY"),
-        quantity: z.number().int().positive(),
-        price: z.number().nonnegative().optional().describe("Required for LIMIT / STOPLOSS_LIMIT"),
-        triggerprice: z.number().nonnegative().optional().describe("Required for STOPLOSS orders"),
-        squareoff: z.number().nonnegative().optional().describe("ROBO only"),
-        stoploss: z.number().nonnegative().optional().describe("ROBO only"),
-        disclosedquantity: z.number().int().nonnegative().optional(),
-        ordertag: z.string().max(20).optional(),
-      },
-      annotations: WRITE,
-    },
-    wrap((a) =>
-      api.post(`${P}/order/v1/placeOrder`, {
-        ...a,
-        quantity: str(a.quantity),
-        price: str(a.price ?? 0),
-        triggerprice: str(a.triggerprice),
-        squareoff: str(a.squareoff),
-        stoploss: str(a.stoploss),
-        disclosedquantity: str(a.disclosedquantity),
-      }),
-    ),
-  );
-
-  server.registerTool(
-    "modify_order",
-    {
-      description: "MODIFIES A REAL OPEN ORDER. Confirm with the user first.",
-      inputSchema: {
-        variety,
-        orderid: z.string(),
-        tradingsymbol: z.string(),
-        symboltoken: z.string(),
-        exchange,
-        ordertype: orderType,
-        producttype: productType,
-        duration: z.enum(["DAY", "IOC"]).default("DAY"),
-        quantity: z.number().int().positive(),
-        price: z.number().nonnegative(),
-        triggerprice: z.number().nonnegative().optional(),
-      },
-      annotations: WRITE,
-    },
-    wrap((a) =>
-      api.post(`${P}/order/v1/modifyOrder`, {
-        ...a,
-        quantity: str(a.quantity),
-        price: str(a.price),
-        triggerprice: str(a.triggerprice),
-      }),
-    ),
-  );
-
-  server.registerTool(
-    "cancel_order",
-    {
-      description: "CANCELS A REAL OPEN ORDER. Confirm with the user first.",
-      inputSchema: { variety, orderid: z.string() },
-      annotations: WRITE,
-    },
-    wrap((args) => api.post(`${P}/order/v1/cancelOrder`, args)),
-  );
-
-  server.registerTool(
-    "convert_position",
-    {
-      description: "Converts an open position's product type (e.g. INTRADAY to DELIVERY). Confirm with the user first.",
-      inputSchema: {
-        exchange,
-        symboltoken: z.string(),
-        tradingsymbol: z.string(),
-        oldproducttype: productType,
-        newproducttype: productType,
-        transactiontype: transactionType,
-        quantity: z.number().int().positive(),
-        type: z.enum(["DAY", "CARRYFORWARD"]).default("DAY"),
-      },
-      annotations: WRITE,
-    },
-    wrap((args) => api.post(`${P}/order/v1/convertPosition`, args)),
-  );
-
-  server.registerTool(
-    "create_gtt_rule",
-    {
-      description: "Creates a real GTT rule that places an order when the trigger price is hit. Confirm with the user first.",
-      inputSchema: {
-        tradingsymbol: z.string(),
-        symboltoken: z.string(),
-        exchange: z.enum(["NSE", "BSE"]),
-        transactiontype: transactionType,
-        producttype: z.enum(["DELIVERY", "MARGIN"]),
-        price: z.number().positive(),
-        qty: z.number().int().positive(),
-        triggerprice: z.number().positive(),
-        disclosedqty: z.number().int().nonnegative().optional(),
-      },
-      annotations: WRITE,
-    },
-    wrap((args) => api.post(`${P}/gtt/v1/createRule`, args)),
-  );
-
-  server.registerTool(
-    "modify_gtt_rule",
-    {
-      description: "Modifies a real GTT rule. Confirm with the user first.",
-      inputSchema: {
-        id: z.string(),
-        symboltoken: z.string(),
-        exchange: z.enum(["NSE", "BSE"]),
-        price: z.number().positive(),
-        qty: z.number().int().positive(),
-        triggerprice: z.number().positive(),
-        disclosedqty: z.number().int().nonnegative().optional(),
-      },
-      annotations: WRITE,
-    },
-    wrap((args) => api.post(`${P}/gtt/v1/modifyRule`, args)),
-  );
-
-  server.registerTool(
-    "cancel_gtt_rule",
-    {
-      description: "Cancels a real GTT rule. Confirm with the user first.",
-      inputSchema: { id: z.string(), symboltoken: z.string(), exchange: z.enum(["NSE", "BSE"]) },
-      annotations: WRITE,
-    },
-    wrap((args) => api.post(`${P}/gtt/v1/cancelRule`, args)),
   );
 }
