@@ -61,7 +61,7 @@ Added to `.gitignore`.
 A request with no result file is pending; once past `expiresAt` it is reported as
 `expired` by the read tools (computed, not written).
 
-Id: `YYYYMMDD-HHmmss-<4 hex>` (local time), so files sort chronologically.
+Id: `YYYYMMDD-HHmmss-<4 hex>` (local time), so files sort chronologically. Timestamps inside the files are ISO 8601 UTC (`toISOString()`).
 
 Request:
 
@@ -69,8 +69,8 @@ Request:
 {
   "id": "20261023-101530-a1b2",
   "action": "place_order",
-  "createdAt": "2026-10-23T10:15:30.000+05:30",
-  "expiresAt": "2026-10-23T10:17:30.000+05:30",
+  "createdAt": "2026-10-23T04:45:30.000Z",
+  "expiresAt": "2026-10-23T04:47:30.000Z",
   "reason": "Breakout above VWAP on rising volume",
   "params": {
     "variety": "NORMAL", "tradingsymbol": "SBIN-EQ", "symboltoken": "3045",
@@ -88,7 +88,7 @@ Result:
 {
   "id": "20261023-101530-a1b2",
   "status": "executed",
-  "decidedAt": "2026-10-23T10:15:52.000+05:30",
+  "decidedAt": "2026-10-23T04:45:52.000Z",
   "ltp": 812.4,
   "response": { "orderid": "241023000123456", "uniqueorderid": "..." },
   "order": { "status": "complete", "text": "" },
@@ -115,15 +115,20 @@ so symbols or reasons can't break quoting.
 
 ## Components
 
-- `src/requests/actions.ts` — for each of the seven actions: zod input schema
-  (moved from `src/tools/rest.ts`), a `describe(params)` for the dialog, and an
-  `execute(api, params)` that makes the SmartAPI call (bodies moved from `rest.ts`).
-- `src/requests/store.ts` — `newId`, `writeRequest`, `readRequest`, `readResult`,
-  `claimResult` (exclusive create), `writeResult`, `listRequests`. Dir is a parameter.
+- `src/requests/actions.ts` — for each of the seven actions: title, endpoint, zod
+  input shape (moved from `src/tools/rest.ts`) and request-body builder (moved from
+  `rest.ts`); `parseParams`, `safeParseParams`, `executeAction(api, name, params)`.
+- `src/requests/store.ts` — `RequestStore(dir)` with `write`, `read`, `readResult`,
+  `claim` (exclusive create), `writeResult`, `ids`, `logPath`; plus `newId` and `view`
+  (computed pending/expired).
+- `src/requests/service.ts` — `RequestService` (`submit`, `get`, `list`) used by the
+  MCP tools, and `spawnApprover`, which runs the approver detached with its output in
+  `requests/<id>.log`.
 - `src/requests/confirm.ts` — `confirm(title, text, timeoutSec): Promise<"approve" | "reject" | "timeout">`,
   picking the Windows or macOS implementation from `process.platform`; throws on others.
-- `src/requests/approve.ts` — the approver steps above as a function taking
-  `{ api, store, confirm, now }`, so tests can inject fakes.
+- `src/requests/approve.ts` — the approver steps above as `approve(id, deps)` taking
+  `{ api, store, confirm, now, sleep? }`, so tests can inject fakes; also `describe`,
+  which builds the dialog text.
 - `scripts/approver.ts` — thin entry: builds real deps, runs `approve(id)`.
 - `src/tools/requests.ts` — MCP tools:
   - `request_place_order`, `request_modify_order`, `request_cancel_order`,
