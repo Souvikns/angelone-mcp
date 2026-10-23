@@ -28,6 +28,7 @@ export const config = {
   pin: required("ANGEL_PIN"),
   totpSecret: required("ANGEL_TOTP_SECRET"),
   enableTrading: process.env.ANGEL_ENABLE_TRADING === "true",
+  requestsDir: process.env.ANGEL_REQUESTS_DIR || join(import.meta.dir, "..", "requests"),
   localIp: process.env.ANGEL_LOCAL_IP ?? "127.0.0.1",
   publicIp: process.env.ANGEL_PUBLIC_IP ?? "127.0.0.1",
   macAddress: process.env.ANGEL_MAC_ADDRESS ?? "00:00:00:00:00:00",

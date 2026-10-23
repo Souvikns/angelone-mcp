@@ -287,7 +287,7 @@ In `.gitignore`, append:
 
 ```
 # order requests filed by Claude and their outcomes
-requests/
+/requests/
 ```
 
 - [ ] **Step 4: Run tests**
